@@ -107,9 +107,6 @@ def main():
                 st.metric("Balance Status", st.session_state.balance_status)
                  
 
-
-
-    
     
 if __name__ == "__main__":
     main()
