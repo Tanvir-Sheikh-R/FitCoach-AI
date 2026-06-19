@@ -88,6 +88,8 @@ def main():
                 st.metric("Body Alignment", st.session_state.body_alignment)
                 st.metric("Hip Position", st.session_state.hip_status)
 
+
+
             elif exercise == "Biceps Curls (Dumbbell)":
                 st.subheader("Curl Metrics")
                 st.metric("Elbow Angle", f"{st.session_state.elbow_angle}°")
