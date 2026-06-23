@@ -13,7 +13,7 @@ def inject_local_font(font_path, font_name):
         return
     
     with open(font_path, 'rb') as f:
-        encoded = base64.b64decode(f.read().decode())
+        encoded = base64.b64encode(f.read()).decode()
 
     # Extention
     ext = os.path.splitext(font_path)[1].strip(".") 
