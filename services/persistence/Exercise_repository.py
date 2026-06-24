@@ -28,7 +28,7 @@ def init_db():
         conn.execute("""
             CREATE TABLE IF NOT EXISTS exercises(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL REFFERENCES user(id),
+                user_id INTEGER NOT NULL REFERENCES user(id),
                 exercise_name TEXT NOT NULL,
                 reps INTEGER NOT NULL DEFAULT 0,
                 sets INTEGER NOT NULL DEFAULT 0,

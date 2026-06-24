@@ -3,7 +3,10 @@ import os
 from services.auth.login_wall import render_login_wall
 from services.state.session_defaults import initial_session_defaults
 from services.coaching.workout_config import EXERCISE_OPTIONS
-from services.ui.style_loader import inject_local_font, load_css
+from services.ui.style_loader import inject_local_font, load_css, inject_webrtc_styles
+from services.persistence.exercise_repository import init_db
+from services.ui.my_custom_ui import workout_not_started
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
 
 
 
@@ -17,6 +20,8 @@ def main():
 
     load_css(os.path.join(os.getcwd(), 'static', 'style.css'))
     inject_local_font(os.path.join(os.getcwd(), 'static', 'AdobeClean.otf'), 'AdobeClean')
+
+    init_db()
 
     if not render_login_wall():
         return
@@ -39,7 +44,7 @@ def main():
             st.number_input('Sets', min_value=0, max_value=50, key='plan_sets')
             st.number_input('Reps per Sets', min_value=0, max_value=50, key='plan_reps')
             st.markdown("")
-            start_session_button = st.button('Start Sessoin', width='stretch', key = 'start_session_button')
+            start_session_button = st.button('Start Workout', width='stretch', key = 'start_session_button')
 
             if start_session_button:
                 st.session_state['workout_started'] = True
@@ -52,7 +57,7 @@ def main():
 
             st.info(f"**{exercise}** -- {sets} Sets / {reps} Resp")
 
-            end_session_button = st.button('End Session', key='end_session_button', width='stretch')
+            end_session_button = st.button('End Workout', key='end_session_button', width='stretch')
 
             if end_session_button:
                 st.session_state['workout_started'] = False
@@ -107,6 +112,32 @@ def main():
                 st.metric("Front Knee Angle", f"{st.session_state.front_knee_angle}°")
                 st.metric("Torso Angle", f"{st.session_state.torso_angle}°")
                 st.metric("Balance Status", st.session_state.balance_status)
+
+    st.title('AI Real-time GYM Coach')
+    st.markdown('#### real-time pose detection with proactive AI voice coaching.')
+
+    if not workout_started:
+        workout_not_started()
+
+    else:
+        inject_webrtc_styles()
+        context = webrtc_streamer(
+            key="exercise-analysis",
+            mode=WebRtcMode.SENDRECV,
+            video_processor_factory=None,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={
+                "video": True,
+                "audio": False
+            },
+            async_processing=True
+        )
+    
+    st.markdown("#### Workout History")
+
+
+
+    
     
 if __name__ == "__main__":
     main()
