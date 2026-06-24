@@ -2,12 +2,16 @@ import streamlit as st
 import sqlite3
 from pathlib import Path
 
+
 _DB_PATH =str(Path(__file__).parent.parent.parent / 'data.db')
 
+
+@st.cache_resource
 def _get_connection():
     conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     conn = _get_connection()
@@ -22,7 +26,7 @@ def init_db():
         """)
 
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS exersises(
+            CREATE TABLE IF NOT EXISTS exercises(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFFERENCES user(id),
                 exercise_name TEXT NOT NULL,
@@ -35,20 +39,19 @@ def init_db():
 
 def get_user(username: str) -> sqlite3.Row:
     conn = _get_connection()
-
     return conn.execute("""
                 SELECT * FROM users WHERE USERNAME = ?
-            """, (username))
+            """, (username)).fetchone()
+
 
 def create_user(username: str) -> sqlite3.Row:
     conn = _get_connection()
-
     with conn:
         conn.execute("""
            INSERT INTO users (username) VALUES (?)
         """, (username))
-
     return get_user(username)
+
 
 def get_or_create_user(username: str) -> sqlite3.Row:
     user = get_user(username)
@@ -58,3 +61,34 @@ def get_or_create_user(username: str) -> sqlite3.Row:
 
     return user
 
+
+def add_exercise(user_id, exercise_name, reps, sets, time):
+    conn = _get_connection()
+
+    with conn:
+        exesting = conn.execute("""
+            SELECT * FROM exercises 
+            WHERE user_id = ? AND exercise_name = ? , AND Date('created_at') = Data('now')
+        """ (user_id, exercise_name)).fetchone()
+
+        if exesting:
+            conn.execute("""
+                UPDATE exercises
+                SET reps = reps + ?, sets = sets + ?, time = time + ?
+                WHERE id = ?
+            """(reps, sets, exesting['id']))
+        
+        else:
+            conn.execute("""
+                INSERT INTO exercises (user_id, exercise_name, sets, reps, time)
+                VALUE(?, ?, ?, ?, ?)
+            """, (user_id, exercise_name, sets, reps, time))
+
+
+def get_users_exercises(user_id):
+    conn = _get_connection()
+
+    return conn.execute("""
+                SELECT * FROM exercises
+                WHERE user_id = ?
+            """, (user_id)).fetchall()
