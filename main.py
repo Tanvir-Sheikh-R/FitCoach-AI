@@ -4,7 +4,7 @@ from services.auth.login_wall import render_login_wall
 from services.state.session_defaults import initial_session_defaults
 from services.coaching.workout_config import EXERCISE_OPTIONS
 from services.ui.style_loader import inject_local_font, load_css, inject_webrtc_styles
-from services.persistence.exercise_repository import init_db
+from services.persistence.Exercise_repository import init_db
 from services.ui.my_custom_ui import workout_not_started
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from services.vision.exercise_video_processor import VideoProcessorClass

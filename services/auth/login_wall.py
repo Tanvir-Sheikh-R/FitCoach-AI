@@ -1,5 +1,5 @@
 import streamlit as st
-from services.persistence.exercise_repository import get_or_create_user, get_user
+from services.persistence.Exercise_repository import get_or_create_user, get_user
 
 
 def render_login_wall():
