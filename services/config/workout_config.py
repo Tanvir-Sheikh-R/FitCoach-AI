@@ -42,7 +42,6 @@ METRICS_FIELDS = {
     },
 }
 
-
 PROMPT = (
     "You are Apna AI Coach, a professional AI gym trainer monitoring a user's workout via live camera.\n\n"
     "### Your Role\n"
