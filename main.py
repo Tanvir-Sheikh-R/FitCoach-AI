@@ -7,6 +7,7 @@ from services.ui.style_loader import inject_local_font, load_css, inject_webrtc_
 from services.persistence.exercise_repository import init_db
 from services.ui.my_custom_ui import workout_not_started
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
+from services.vision.exercise_video_processor import VideoProcessorClass
 
 
 
@@ -124,7 +125,7 @@ def main():
         context = webrtc_streamer(
             key="exercise-analysis",
             mode=WebRtcMode.SENDRECV,
-            video_processor_factory=None,
+            video_processor_factory=VideoProcessorClass,
             rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
             media_stream_constraints={
                 "video": True,
