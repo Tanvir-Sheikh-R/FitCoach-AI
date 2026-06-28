@@ -12,9 +12,11 @@ from services.vision.exercise_video_processor import VideoProcessorClass
 from services.tracking.metrics import sync_metrics_update
 from services.persistence.Exercise_repository import get_users_exercises
 from groq import Groq
+from services.coaching.api_keys import get_groq_api_key
 from services.coaching.llm import LLMCoach
 from services.coaching.tts import TextToSpeech
-from services.coaching.voice_pipeline import VoicePipeline, autoplay_audio
+from services.coaching.audio_player import is_audio_playing, queue_coach_audio, render_coach_audio
+from services.coaching.voice_pipeline import VoicePipeline
 import pandas as pd
 
 
@@ -36,19 +38,23 @@ def main():
     
     initial_session_defaults()
 
-    if "voice_pipeline" not in st.session_state:
+    if not st.session_state.get("voice_pipeline") and not st.session_state.get("_voice_pipeline_init_attempted"):
+        st.session_state._voice_pipeline_init_attempted = True
         try:
-            api_key = os.environ.get("GROQ_API_KEY", "")
+            api_key = get_groq_api_key()
+            if not api_key:
+                raise ValueError(
+                    "Missing GROQ_API_KEY. Add it to Main App/.streamlit/secrets.toml or a .env file, then refresh the page."
+                )
 
-            if not api_key and hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
-                api_key = st.secrets["GROQ_API_KEY"]
-            
             groq_client = Groq(api_key=api_key)
             llm_coach = LLMCoach(groq_client)
             tts = TextToSpeech()
             st.session_state.voice_pipeline = VoicePipeline(llm_coach, tts)
+            st.session_state.pop("voice_pipeline_error", None)
         except Exception as e:
             st.session_state.voice_pipeline = None
+            st.session_state.voice_pipeline_error = str(e)
 
             
     workout_started = st.session_state.get('workout_started', False)
@@ -87,8 +93,7 @@ def main():
                     )
                     
                     if result:
-                        st.session_state.audio_to_play
-                        st.session_state.coach_feedback = result
+                        queue_coach_audio(result[0], result[1])
 
                 st.session_state.last_notified_sets_completed = 0
                 st.session_state.last_notified_workout_complete = False
@@ -111,7 +116,7 @@ def main():
                         metrics={}
                     )
                     if result:
-                        st.session_state.audio_to_play, st.session_state.coach_feedback = result
+                        queue_coach_audio(result[0], result[1])
                 st.rerun()
 
 
@@ -167,9 +172,10 @@ def main():
     st.title('AI Real-time GYM Coach')
     st.markdown('#### Real-time pose detection with proactive AI voice coaching.')
 
-    if st.session_state.get("audio_to_play"):
-        autoplay_audio(st.session_state.audio_to_play)
-        st.session_state.audio_to_play = None  # ✅ clear after playing
+    if st.session_state.get("voice_pipeline_error"):
+        st.warning(f"Voice coach unavailable: {st.session_state.voice_pipeline_error}")
+
+    render_coach_audio()
 
     if st.session_state.get("coach_feedback"):
         st.markdown("")
@@ -190,22 +196,17 @@ def main():
             },
             async_processing=True
         )
-
         sync_metrics_update(context)
 
-        # ✅ ADD THIS BLOCK
-        # if context.state.playing and st.session_state.get("voice_pipeline"):
-        #     exercise = st.session_state.get("exercise_type", "")
-        #     metrics = st.session_state.get("latest_metrics_snapshot", {})
-        #     pipeline = st.session_state.voice_pipeline
-        #     result = pipeline.process_event("form_check", exercise, metrics)
-        #     if result:
-        #         voice, text = result
-        #         st.session_state.audio_to_play = voice
-        #         st.session_state.coach_feedback = text
+        
 
         if context.state.playing:
-            time.sleep(0.25)
+            if is_audio_playing():
+                remaining = st.session_state.audio_playback_until - time.time()
+                if remaining > 0:
+                    time.sleep(remaining)
+            else:
+                time.sleep(0.5)
             st.rerun()
 
         inject_webrtc_styles()

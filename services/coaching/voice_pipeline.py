@@ -1,12 +1,14 @@
-
-import streamlit as st
 import time
 
+
 class VoicePipeline:
+    FORM_COOLDOWN_SECONDS = 10
+
     def __init__(self, llm, tts):
         self.llm = llm
         self.tts = tts
         self.last_spoken_at = 0
+        self.last_spoken_issue = None
 
     def _find_form_issue(self, exercise, metrics):
         if "issue" in metrics:
@@ -15,7 +17,7 @@ class VoicePipeline:
         if exercise == "Squats":
             depth = metrics.get("depth_status", "")
             back_angle = metrics.get("back_angle", 180)
-            
+
             if depth == "TOO HIGH":
                 return "The user's squat is not deep enough — knees are not bending sufficiently."
 
@@ -25,7 +27,7 @@ class VoicePipeline:
         elif exercise == "Push-ups":
             alignment = metrics.get("body_alignment", "")
             hip_status = metrics.get("hip_status", "")
-            
+
             if alignment == "Poor Form":
                 return "The user's body is not straight during the push-up."
 
@@ -38,7 +40,7 @@ class VoicePipeline:
         elif exercise == "Biceps Curls (Dumbbell)":
             swing = metrics.get("swing_status", "")
             shoulder = metrics.get("shoulder_status", "")
-            
+
             if swing == "SWINGING":
                 return "The user is swinging their torso during the curl — keep the body still."
 
@@ -47,8 +49,7 @@ class VoicePipeline:
 
         elif exercise == "Shoulder Press":
             back_arch = metrics.get("back_arch_status", "")
-            extension = metrics.get("extension_status", "")
-            
+
             if back_arch == "Excessive Arch":
                 return "The user is arching their lower back excessively during the press."
 
@@ -57,42 +58,46 @@ class VoicePipeline:
 
         elif exercise == "Lunges":
             balance = metrics.get("balance_status", "")
-            
+
             if balance == "OFF BALANCE":
                 return "The user is losing balance during the lunge — feet should be hip-width apart."
 
         return None
-    
 
-    
+    def _should_speak_form_issue(self, issue: str, now: float) -> bool:
+        if not issue:
+            self.last_spoken_issue = None
+            return False
+
+        if issue == self.last_spoken_issue:
+            return False
+
+        if now - self.last_spoken_at < self.FORM_COOLDOWN_SECONDS:
+            return False
+
+        return True
+
     def process_event(self, event, exercise, metrics):
-        issue = self._find_from_issue(exercise, metrics)
-
+        issue = self._find_form_issue(exercise, metrics)
         now = time.time()
+        is_major_event = event in ["workout_started", "set_completed", "workout_completed"]
 
-        is_major_issue = event in ["workout_started", "set_completed", "workout_completed"]
+        if not is_major_event:
+            if event == "no_pose_detected":
+                issue = issue or "No pose detected! Please step into the camera frame."
 
-        if not is_major_issue:
-            if not issue:
+            if not self._should_speak_form_issue(issue, now):
                 return None
-            
-            if now - self.last_spoken_at < 5:
-                return None
-            
+        else:
+            self.last_spoken_issue = None
+
         text = self.llm.give_feedback(event, issue)
         voice = self.tts.speak(text)
+        if not voice:
+            return None
 
         self.last_spoken_at = now
+        if issue:
+            self.last_spoken_issue = issue
 
         return voice, text
-    
-
-
-    
-def autoplay_audio(audio_bytes):
-    if not audio_bytes:
-        return
-    
-    st.markdown("<style>[data-testid='stAudio'] {display: none;}</style>", unsafe_allow_html=True)
-    
-    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
