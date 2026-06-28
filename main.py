@@ -87,7 +87,8 @@ def main():
                     )
                     
                     if result:
-                        st.session_state.audio_to_play, st.session_state.coach_feedback = result
+                        st.session_state.audio_to_play
+                        st.session_state.coach_feedback = result
 
                 st.session_state.last_notified_sets_completed = 0
                 st.session_state.last_notified_workout_complete = False
@@ -166,6 +167,14 @@ def main():
     st.title('AI Real-time GYM Coach')
     st.markdown('#### Real-time pose detection with proactive AI voice coaching.')
 
+    if st.session_state.get("audio_to_play"):
+        autoplay_audio(st.session_state.audio_to_play)
+        st.session_state.audio_to_play = None  # ✅ clear after playing
+
+    if st.session_state.get("coach_feedback"):
+        st.markdown("")
+        st.success(f"🤖 **Coach:** {st.session_state.coach_feedback}")
+
     if not workout_started:
         workout_not_started()
 
@@ -183,6 +192,17 @@ def main():
         )
 
         sync_metrics_update(context)
+
+        # ✅ ADD THIS BLOCK
+        # if context.state.playing and st.session_state.get("voice_pipeline"):
+        #     exercise = st.session_state.get("exercise_type", "")
+        #     metrics = st.session_state.get("latest_metrics_snapshot", {})
+        #     pipeline = st.session_state.voice_pipeline
+        #     result = pipeline.process_event("form_check", exercise, metrics)
+        #     if result:
+        #         voice, text = result
+        #         st.session_state.audio_to_play = voice
+        #         st.session_state.coach_feedback = text
 
         if context.state.playing:
             time.sleep(0.25)
@@ -227,4 +247,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
