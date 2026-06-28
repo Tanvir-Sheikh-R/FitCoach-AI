@@ -11,7 +11,9 @@
 [data-testid="stSidebar"] {
   background-color: #111520;
 }
-
+header[data-testid="stHeader"] {
+    display: none;
+}
 /* =========================================================
    TYPOGRAPHY (SCOPED – safer)
 ========================================================= */
